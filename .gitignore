@@ -1,0 +1,21 @@
+# Python virtual environment
+env/
+.env/
+venv/
+ENV/
+.venv/
+
+# PyCharm project config
+.idea/
+
+# __pycache__ en andere Python build files
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+*.log
+
+# OS-specifiek
+.DS_Store
+Thumbs.db
