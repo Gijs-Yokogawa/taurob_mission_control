@@ -1,51 +1,51 @@
 # Taurob Mission Control
 
-Een Python-project voor het aansturen en beheren van robot-checkpoints, inclusief API-koppeling en GUI via Tkinter.
+A Python project for managing and controlling robot checkpoints, including API integration and a Tkinter-based GUI.
 
-## 📦 Vereisten
+## 📦 Requirements
 
 - Python **3.11.4**
-- Zie [`requirements.txt`](./requirements.txt) voor alle benodigde packages.
+- See [`requirements.txt`](./requirements.txt) for all required packages.
 
-## 🏁 Starten
+## 🏁 Getting Started
 
-1. Zorg dat Python 3.11.4 geïnstalleerd is.
-2. (Optioneel) Maak een virtuele omgeving aan:
+1. Make sure Python 3.11.4 is installed.
+2. (Optional) Create a virtual environment:
 
    ```bash
    python -m venv env
-   source env/bin/activate  # op Windows: .\env\Scripts\activate
+   source env/bin/activate  # on Windows: .\env\Scripts\activate
    ```
 
-3. Installeer de afhankelijkheden:
+3. Install dependencies:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Start de applicatie:
+4. Start the application:
 
    ```bash
    python main.py
    ```
 
-## 📂 Structuur
+## 📂 Project Structure
 
 ```text
-├── gui/                  # Bevat GUI componenten (Tkinter)
-├── models/               # Datamodellen en templates
-├── checkpoints/          # Opgeslagen checkpoint templates
-├── main.py               # Hoofdbestand om te starten
-├── requirements.txt      # Afhankelijkheden
-├── .gitignore            # Git-exclusies
-└── README.md             # Dit bestand
+├── gui/                  # GUI components (Tkinter)
+├── models/               # Data models and templates
+├── checkpoints/          # Saved checkpoint templates
+├── main.py               # Main entry point
+├── requirements.txt      # Dependencies
+├── .gitignore            # Git exclusions
+└── README.md             # This file
 ```
 
 ## 🔒 .gitignore
 
-Zorg ervoor dat de map `env/` (je virtuele omgeving) en alle `.zip` bestanden zijn uitgesloten van je Git-repository. Zie `.gitignore`.
+Ensure that the `env/` folder (your virtual environment) and all `.zip` files are excluded from your Git repository. See `.gitignore`.
 
-## ✍️ Notities
+## ✍️ Notes
 
-- Gebruik je een andere Python-versie? Vermeld dit hier.
-- Controleer altijd of de juiste `requirements.txt` is bijgewerkt na package-wijzigingen.
+- Using a different Python version? Mention it here.
+- Always update `requirements.txt` when your dependencies change.
