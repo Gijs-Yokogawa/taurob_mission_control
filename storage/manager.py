@@ -85,6 +85,21 @@ def get_checkpoint_json_by_id(checkpoint_id: str):
     return None
 
 
+def checkpoint_exists(checkpoint_id: str) -> bool:
+    """Check of een checkpoint met dit ID bestaat."""
+    init_db()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT 1 FROM checkpoints WHERE checkpoint_id = ? LIMIT 1",
+        (checkpoint_id,),
+    )
+    exists = cursor.fetchone() is not None
+    conn.close()
+    return exists
+
+
 def save_checkpoint(checkpoint_data: dict):
     """Slaat een checkpoint op in de database, vervangt als deze al bestaat."""
     print("[DB] → save_checkpoint() aangeroepen")
