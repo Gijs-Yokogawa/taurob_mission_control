@@ -158,6 +158,10 @@ def save_checkpoint(checkpoint_data: dict, modified: bool = False):
     conn = sqlite3.connect(get_db_path())
     cursor = conn.cursor()
 
+    cp_id = checkpoint_data.get("id", checkpoint_data.get("ActionID"))
+    cp_type = checkpoint_data.get("type", checkpoint_data.get("ActionType"))
+    cp_name = checkpoint_data.get("name", checkpoint_data.get("ActionName"))
+
     cursor.execute(
         """
         INSERT INTO checkpoints (checkpoint_id, type, name, json, created_at, modified_local)
@@ -170,9 +174,9 @@ def save_checkpoint(checkpoint_data: dict, modified: bool = False):
             modified_local=excluded.modified_local
     """,
         (
-            checkpoint_data.get("id"),
-            checkpoint_data.get("type"),
-            checkpoint_data.get("name"),
+            cp_id,
+            cp_type,
+            cp_name,
             json.dumps(checkpoint_data),
             checkpoint_data.get("created_at", ""),
             int(modified),

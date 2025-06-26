@@ -75,3 +75,18 @@ def test_get_all_checkpoints_sorted_case_insensitive(tmp_path, monkeypatch):
     rows_desc = manager.get_all_checkpoints_from_db(order_by="name", ascending=False)
     names_desc = [r[1] for r in rows_desc]
     assert names_desc == ["charlie", "Bravo", "alpha"]
+
+
+def test_save_checkpoint_preserves_json(tmp_path, monkeypatch):
+    setup_temp_db(tmp_path, monkeypatch)
+    checkpoint = {
+        "ActionID": "42",
+        "ActionName": "demo",
+        "ActionType": "drive",
+        "RobotPose": "",
+        "ActionInfo": "",
+        "Metadata": "",
+    }
+    manager.save_checkpoint(checkpoint)
+    result = manager.get_checkpoint_json_by_id("42")
+    assert result == checkpoint

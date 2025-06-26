@@ -151,21 +151,19 @@ class CheckpointViewer(tk.Toplevel):
         try:
             api_data = get_checkpoints()
             for cp in api_data:
-                mapped = cp.copy()
-                mapped["id"] = cp.get("ActionID")
-                mapped["name"] = cp.get("ActionName")
-                mapped["type"] = cp.get("ActionType")
+                cp_id = cp.get("ActionID")
+                name = cp.get("ActionName")
 
-                if checkpoint_exists(mapped["id"]):
+                if checkpoint_exists(cp_id):
                     overwrite = messagebox.askyesno(
                         "Overschrijven?",
-                        f"Checkpoint '{mapped['name']}' bestaat al. Overschrijven?",
+                        f"Checkpoint '{name}' bestaat al. Overschrijven?",
                         parent=self,
                     )
                     if not overwrite:
                         continue
 
-                save_checkpoint(mapped)
+                save_checkpoint(cp)
 
             self.populate_tree()
             messagebox.showinfo("Sync voltooid", "Checkpoints gesynchroniseerd.", parent=self)
@@ -183,7 +181,7 @@ class CheckpointViewer(tk.Toplevel):
                 else:
                     response = create_checkpoint(cp)
                 save_checkpoint(response)
-                mark_checkpoint_modified(response.get("id"), False)
+                mark_checkpoint_modified(response.get("id") or response.get("ActionID"), False)
 
             self.populate_tree()
             messagebox.showinfo(
