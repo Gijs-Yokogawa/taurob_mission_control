@@ -90,3 +90,16 @@ def test_save_checkpoint_preserves_json(tmp_path, monkeypatch):
     manager.save_checkpoint(checkpoint)
     result = manager.get_checkpoint_json_by_id("42")
     assert result == checkpoint
+
+
+def test_save_checkpoint_sets_timestamp(tmp_path, monkeypatch):
+    db_path = setup_temp_db(tmp_path, monkeypatch)
+    checkpoint = {"id": "55", "type": "demo", "name": "t"}
+    manager.save_checkpoint(checkpoint)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT created_at FROM checkpoints WHERE checkpoint_id = '55'")
+    row = cursor.fetchone()[0]
+    conn.close()
+    assert row != ""
+

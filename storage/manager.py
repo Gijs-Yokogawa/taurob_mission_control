@@ -4,6 +4,7 @@ import os
 import sqlite3
 import json
 from pathlib import Path
+from datetime import datetime
 
 DEFAULT_DB_PATH = "checkpoints/checkpoints_chat.db"  # Default locatie
 CONFIG_FILE = Path(__file__).resolve().parent.parent / "db_config.json"
@@ -74,6 +75,7 @@ def update_local_checkpoints_from_api(api_checkpoints: list):
     cursor.execute("DELETE FROM checkpoints")
 
     for cp in api_checkpoints:
+        created_at = cp.get("created_at") or datetime.now().isoformat()
         cursor.execute(
             """
             INSERT INTO checkpoints (checkpoint_id, type, name, json, created_at, modified_local)
@@ -84,7 +86,7 @@ def update_local_checkpoints_from_api(api_checkpoints: list):
                 cp.get("ActionType"),
                 cp.get("ActionName"),
                 json.dumps(cp),
-                cp.get("created_at", ""),
+                created_at,
             ),
         )
 
@@ -101,7 +103,7 @@ def get_all_checkpoints_from_db(order_by="id", ascending=True):
 
     order_dir = "ASC" if ascending else "DESC"
     # Zorg dat order_by veilig is, beperk tot toegestane kolommen
-    if order_by not in ("id", "checkpoint_id", "type", "name", "created_at"):
+    if order_by not in ("id", "checkpoint_id", "type", "name", "created_at", "modified_local"):
         order_by = "id"
 
     if order_by == "checkpoint_id":
@@ -112,7 +114,7 @@ def get_all_checkpoints_from_db(order_by="id", ascending=True):
         order_field = order_by
 
     query = (
-        "SELECT checkpoint_id, name, type, created_at FROM checkpoints "
+        "SELECT checkpoint_id, name, type, created_at, modified_local FROM checkpoints "
         f"ORDER BY {order_field} {order_dir}"
     )
     cursor.execute(query)
@@ -162,6 +164,10 @@ def save_checkpoint(checkpoint_data: dict, modified: bool = False):
     cp_type = checkpoint_data.get("type", checkpoint_data.get("ActionType"))
     cp_name = checkpoint_data.get("name", checkpoint_data.get("ActionName"))
 
+    created_at_value = checkpoint_data.get("created_at")
+    if modified or not created_at_value:
+        created_at_value = datetime.now().isoformat()
+
     cursor.execute(
         """
         INSERT INTO checkpoints (checkpoint_id, type, name, json, created_at, modified_local)
@@ -178,7 +184,7 @@ def save_checkpoint(checkpoint_data: dict, modified: bool = False):
             cp_type,
             cp_name,
             json.dumps(checkpoint_data),
-            checkpoint_data.get("created_at", ""),
+            created_at_value,
             int(modified),
         ),
     )
