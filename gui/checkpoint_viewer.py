@@ -2,13 +2,21 @@
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-from api.client import get_checkpoints, delete_checkpoint, sync_from_robot
+from api.client import (
+    get_checkpoints,
+    delete_checkpoint,
+    sync_from_robot,
+    create_checkpoint,
+    update_checkpoint,
+)
 from storage.manager import (
     update_local_checkpoints_from_api,
     get_all_checkpoints_from_db,
     get_checkpoint_json_by_id,
     save_checkpoint,
     checkpoint_exists,
+    get_modified_checkpoints,
+    mark_checkpoint_modified,
 )
 import json
 
@@ -51,6 +59,7 @@ class CheckpointViewer(tk.Toplevel):
         tk.Button(button_frame, text="Erase DB & Sync", command=self.erase_and_sync).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Sync from API", command=self.sync_from_api).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Delete & Sync Selected", command=self.delete_and_sync_selected).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Sync to API", command=self.sync_to_api).pack(side=tk.LEFT, padx=5)
 
         # Variabelen voor sorteren
         self.sort_column = "id"
@@ -142,3 +151,25 @@ class CheckpointViewer(tk.Toplevel):
             messagebox.showinfo("Sync voltooid", "Checkpoints gesynchroniseerd.", parent=self)
         except Exception as e:
             messagebox.showerror("Fout", f"Fout bij synchronisatie:\n{e}", parent=self)
+
+    def sync_to_api(self):
+        """Upload lokale wijzigingen naar de API."""
+        try:
+            modified = get_modified_checkpoints()
+            for cp in modified:
+                cp_id = cp.get("id") or cp.get("ActionID")
+                if cp_id:
+                    response = update_checkpoint(cp_id, cp)
+                else:
+                    response = create_checkpoint(cp)
+                save_checkpoint(response)
+                mark_checkpoint_modified(response.get("id"), False)
+
+            self.populate_tree()
+            messagebox.showinfo(
+                "Sync voltooid",
+                "Lokale wijzigingen gesynchroniseerd.",
+                parent=self,
+            )
+        except Exception as e:
+            messagebox.showerror("Fout", f"Fout bij synchroniseren:\n{e}", parent=self)
