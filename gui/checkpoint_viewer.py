@@ -36,7 +36,7 @@ class CheckpointViewer(tk.Toplevel):
         # TreeView met kolommen
         self.tree = ttk.Treeview(
             main_frame,
-            columns=("checkpoint_id", "name", "type", "created_at"),
+            columns=("checkpoint_id", "name", "type", "created_at", "modified"),
             show="headings",
         )
 
@@ -44,7 +44,8 @@ class CheckpointViewer(tk.Toplevel):
             "checkpoint_id": "ID",
             "name": "Naam",
             "type": "Type",
-            "created_at": "Created At",
+            "created_at": "Modified",
+            "modified": "Local",
         }
 
         for col, label in self.heading_labels.items():
@@ -54,6 +55,7 @@ class CheckpointViewer(tk.Toplevel):
         self.tree.column("name", width=250)
         self.tree.column("type", width=100)
         self.tree.column("created_at", width=150)
+        self.tree.column("modified", width=80)
 
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
         self.tree.pack(fill=tk.BOTH, expand=True)
@@ -69,6 +71,7 @@ class CheckpointViewer(tk.Toplevel):
         tk.Button(button_frame, text="Erase DB & Sync", command=self.erase_and_sync).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Sync from API", command=self.sync_from_api).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Delete & Sync Selected", command=self.delete_and_sync_selected).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Save JSON", command=self.save_json_changes).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Sync to API", command=self.sync_to_api).pack(side=tk.LEFT, padx=5)
 
         # Variabelen voor sorteren
@@ -90,8 +93,9 @@ class CheckpointViewer(tk.Toplevel):
     def populate_tree(self):
         self.tree.delete(*self.tree.get_children())
         rows = get_all_checkpoints_from_db(order_by=self.sort_column, ascending=self.sort_ascending)
-        for checkpoint_id, name, ctype, created_at in rows:
-            self.tree.insert("", "end", values=(checkpoint_id, name, ctype, created_at))
+        for checkpoint_id, name, ctype, created_at, modified_local in rows:
+            mod_flag = "Yes" if modified_local else ""
+            self.tree.insert("", "end", values=(checkpoint_id, name, ctype, created_at, mod_flag))
         self.json_text.delete("1.0", tk.END)
 
     def sort_tree(self, col):
@@ -146,6 +150,26 @@ class CheckpointViewer(tk.Toplevel):
         if json_data:
             pretty_json = json.dumps(json_data, indent=2)
             self.json_text.insert(tk.END, pretty_json)
+
+    def save_json_changes(self):
+        """Sla aangepaste JSON lokaal op en markeer als gewijzigd."""
+        raw = self.json_text.get("1.0", tk.END).strip()
+        if not raw:
+            messagebox.showwarning("Leeg", "Geen JSON om op te slaan.", parent=self)
+            return
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            messagebox.showerror("Ongeldig JSON", str(e), parent=self)
+            return
+        cp_id = data.get("id") or data.get("ActionID")
+        if not cp_id:
+            messagebox.showerror("ID ontbreekt", "JSON mist 'id' of 'ActionID'", parent=self)
+            return
+
+        save_checkpoint(data, modified=True)
+        self.populate_tree()
+        messagebox.showinfo("Opgeslagen", "Wijzigingen lokaal opgeslagen.", parent=self)
 
     def sync_from_api(self):
         try:
