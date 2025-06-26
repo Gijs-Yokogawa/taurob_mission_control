@@ -104,7 +104,15 @@ def get_all_checkpoints_from_db(order_by="id", ascending=True):
     if order_by not in ("id", "checkpoint_id", "type", "name", "created_at"):
         order_by = "id"
 
-    query = f"SELECT checkpoint_id, name, type, created_at FROM checkpoints ORDER BY {order_by} {order_dir}"
+    if order_by == "checkpoint_id":
+        order_field = "CAST(checkpoint_id AS INTEGER)"
+    else:
+        order_field = order_by
+
+    query = (
+        "SELECT checkpoint_id, name, type, created_at FROM checkpoints "
+        f"ORDER BY {order_field} {order_dir}"
+    )
     cursor.execute(query)
     rows = cursor.fetchall()
     conn.close()
