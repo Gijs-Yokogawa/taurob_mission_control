@@ -54,7 +54,7 @@ class CheckpointViewer(tk.Toplevel):
         self.sort_ascending = True
 
         # Initialiseer met data
-        self.erase_and_sync()
+        self.populate_tree()
 
     def erase_and_sync(self):
         try:
