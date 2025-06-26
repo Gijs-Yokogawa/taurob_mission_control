@@ -34,11 +34,21 @@ class CheckpointViewer(tk.Toplevel):
         main_frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
         # TreeView met kolommen
-        self.tree = ttk.Treeview(main_frame, columns=("checkpoint_id", "name", "type", "created_at"), show="headings")
-        self.tree.heading("checkpoint_id", text="ID", command=lambda: self.sort_tree("checkpoint_id"))
-        self.tree.heading("name", text="Naam", command=lambda: self.sort_tree("name"))
-        self.tree.heading("type", text="Type", command=lambda: self.sort_tree("type"))
-        self.tree.heading("created_at", text="Created At", command=lambda: self.sort_tree("created_at"))
+        self.tree = ttk.Treeview(
+            main_frame,
+            columns=("checkpoint_id", "name", "type", "created_at"),
+            show="headings",
+        )
+
+        self.heading_labels = {
+            "checkpoint_id": "ID",
+            "name": "Naam",
+            "type": "Type",
+            "created_at": "Created At",
+        }
+
+        for col, label in self.heading_labels.items():
+            self.tree.heading(col, text=label, command=lambda c=col: self.sort_tree(c))
 
         self.tree.column("checkpoint_id", width=120)
         self.tree.column("name", width=250)
@@ -88,8 +98,18 @@ class CheckpointViewer(tk.Toplevel):
         if self.sort_column == col:
             self.sort_ascending = not self.sort_ascending
         else:
+            # Reset vorige kolom label indien nodig
+            if self.sort_column in getattr(self, "heading_labels", {}):
+                prev_label = self.heading_labels[self.sort_column]
+                self.tree.heading(self.sort_column, text=prev_label)
             self.sort_column = col
             self.sort_ascending = True
+
+        arrow = "▲" if self.sort_ascending else "▼"
+        if col in getattr(self, "heading_labels", {}):
+            label = self.heading_labels[col]
+            self.tree.heading(col, text=f"{label} {arrow}")
+
         self.populate_tree()
 
     def delete_and_sync_selected(self):
