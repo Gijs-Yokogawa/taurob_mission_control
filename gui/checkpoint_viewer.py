@@ -2,7 +2,6 @@
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-from datetime import datetime
 from api.client import (
     get_checkpoints,
     delete_checkpoint,
@@ -168,7 +167,6 @@ class CheckpointViewer(tk.Toplevel):
             messagebox.showerror("ID ontbreekt", "JSON mist 'id' of 'ActionID'", parent=self)
             return
 
-        data["created_at"] = datetime.now().isoformat()
         save_checkpoint(data, modified=True)
         self.populate_tree()
         messagebox.showinfo("Opgeslagen", "Wijzigingen lokaal opgeslagen.", parent=self)
