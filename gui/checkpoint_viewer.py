@@ -7,6 +7,8 @@ from storage.manager import (
     update_local_checkpoints_from_api,
     get_all_checkpoints_from_db,
     get_checkpoint_json_by_id,
+    save_checkpoint,
+    checkpoint_exists,
 )
 import json
 
@@ -47,6 +49,7 @@ class CheckpointViewer(tk.Toplevel):
         button_frame.pack(pady=5)
 
         tk.Button(button_frame, text="Erase DB & Sync", command=self.erase_and_sync).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Sync from API", command=self.sync_from_api).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Delete & Sync Selected", command=self.delete_and_sync_selected).pack(side=tk.LEFT, padx=5)
 
         # Variabelen voor sorteren
@@ -114,3 +117,28 @@ class CheckpointViewer(tk.Toplevel):
         if json_data:
             pretty_json = json.dumps(json_data, indent=2)
             self.json_text.insert(tk.END, pretty_json)
+
+    def sync_from_api(self):
+        try:
+            api_data = get_checkpoints()
+            for cp in api_data:
+                mapped = cp.copy()
+                mapped["id"] = cp.get("ActionID")
+                mapped["name"] = cp.get("ActionName")
+                mapped["type"] = cp.get("ActionType")
+
+                if checkpoint_exists(mapped["id"]):
+                    overwrite = messagebox.askyesno(
+                        "Overschrijven?",
+                        f"Checkpoint '{mapped['name']}' bestaat al. Overschrijven?",
+                        parent=self,
+                    )
+                    if not overwrite:
+                        continue
+
+                save_checkpoint(mapped)
+
+            self.populate_tree()
+            messagebox.showinfo("Sync voltooid", "Checkpoints gesynchroniseerd.", parent=self)
+        except Exception as e:
+            messagebox.showerror("Fout", f"Fout bij synchronisatie:\n{e}", parent=self)
