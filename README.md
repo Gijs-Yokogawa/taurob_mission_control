@@ -21,6 +21,7 @@ A Python project for managing and controlling robot checkpoints, including API i
 
    ```bash
    pip install -r requirements.txt
+   pip install pytest  # needed for running the test suite
    ```
 
 4. Start the application:
@@ -28,6 +29,14 @@ A Python project for managing and controlling robot checkpoints, including API i
    ```bash
    python main.py
    ```
+
+## 🧪 Running Tests
+
+The test suite uses **pytest**. After installing the dependencies and pytest, run:
+
+```bash
+pytest
+```
 
 ## 📂 Project Structure
 
