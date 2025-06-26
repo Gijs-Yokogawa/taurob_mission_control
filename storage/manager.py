@@ -18,9 +18,18 @@ def init_db():
             type TEXT,
             name TEXT,
             json TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            modified_local INTEGER DEFAULT 0
         )
     """)
+
+    # Zorg dat kolom modified_local bestaat (voor oudere databases)
+    cursor.execute("PRAGMA table_info(checkpoints)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "modified_local" not in columns:
+        cursor.execute(
+            "ALTER TABLE checkpoints ADD COLUMN modified_local INTEGER DEFAULT 0"
+        )
 
     conn.commit()
     conn.close()
@@ -36,16 +45,19 @@ def update_local_checkpoints_from_api(api_checkpoints: list):
     cursor.execute("DELETE FROM checkpoints")
 
     for cp in api_checkpoints:
-        cursor.execute("""
-            INSERT INTO checkpoints (checkpoint_id, type, name, json, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            cp.get("ActionID"),
-            cp.get("ActionType"),
-            cp.get("ActionName"),
-            json.dumps(cp),
-            cp.get("created_at", "")
-        ))
+        cursor.execute(
+            """
+            INSERT INTO checkpoints (checkpoint_id, type, name, json, created_at, modified_local)
+            VALUES (?, ?, ?, ?, ?, 0)
+        """,
+            (
+                cp.get("ActionID"),
+                cp.get("ActionType"),
+                cp.get("ActionName"),
+                json.dumps(cp),
+                cp.get("created_at", ""),
+            ),
+        )
 
     conn.commit()
     conn.close()
@@ -100,28 +112,33 @@ def checkpoint_exists(checkpoint_id: str) -> bool:
     return exists
 
 
-def save_checkpoint(checkpoint_data: dict):
+def save_checkpoint(checkpoint_data: dict, modified: bool = False):
     """Slaat een checkpoint op in de database, vervangt als deze al bestaat."""
     print("[DB] → save_checkpoint() aangeroepen")
     init_db()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO checkpoints (checkpoint_id, type, name, json, created_at)
-        VALUES (?, ?, ?, ?, ?)
+    cursor.execute(
+        """
+        INSERT INTO checkpoints (checkpoint_id, type, name, json, created_at, modified_local)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(checkpoint_id) DO UPDATE SET
             type=excluded.type,
             name=excluded.name,
             json=excluded.json,
-            created_at=excluded.created_at
-    """, (
-        checkpoint_data.get("id"),
-        checkpoint_data.get("type"),
-        checkpoint_data.get("name"),
-        json.dumps(checkpoint_data),
-        checkpoint_data.get("created_at", "")
-    ))
+            created_at=excluded.created_at,
+            modified_local=excluded.modified_local
+    """,
+        (
+            checkpoint_data.get("id"),
+            checkpoint_data.get("type"),
+            checkpoint_data.get("name"),
+            json.dumps(checkpoint_data),
+            checkpoint_data.get("created_at", ""),
+            int(modified),
+        ),
+    )
 
     conn.commit()
     conn.close()
@@ -138,3 +155,27 @@ def delete_checkpoint_local(checkpoint_id: str):
     conn.commit()
     conn.close()
     print(f"[DB] Checkpoint met ID '{checkpoint_id}' verwijderd uit lokale DB.")
+
+
+def mark_checkpoint_modified(checkpoint_id: str, modified: bool = True):
+    """Markeer een checkpoint als lokaal aangepast."""
+    init_db()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE checkpoints SET modified_local = ? WHERE checkpoint_id = ?",
+        (1 if modified else 0, checkpoint_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_modified_checkpoints() -> list:
+    """Haal alle checkpoints op die lokaal aangepast zijn."""
+    init_db()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT json FROM checkpoints WHERE modified_local = 1")
+    rows = cursor.fetchall()
+    conn.close()
+    return [json.loads(r[0]) for r in rows]

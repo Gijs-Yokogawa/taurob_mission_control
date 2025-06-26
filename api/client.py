@@ -82,6 +82,22 @@ def create_checkpoint(payload):
     return response.json()
 
 
+def update_checkpoint(checkpoint_id, payload):
+    """Update an existing checkpoint via the API."""
+    print("[API] → update_checkpoint() aangeroepen")
+    url = f"{BASE_URL}{API_PREFIX}/editor/action/{checkpoint_id}"
+    print(f"[API] Bijwerken checkpoint ID {checkpoint_id} via: {url}")
+    print(f"[API] Payload: {payload}")
+    response = session.put(
+        url,
+        json=payload,
+        auth=HTTPBasicAuth(credentials["username"], credentials["password"]),
+        verify=VERIFY_SSL,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def create_and_save_checkpoint(payload):
     print("[FLOW] → create_and_save_checkpoint() gestart")
     api_response = create_checkpoint(payload)
