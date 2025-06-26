@@ -19,3 +19,7 @@ __pycache__/
 # OS-specifiek
 .DS_Store
 Thumbs.db
+
+# Zip-bestanden uitsluiten
+*.zip
+
