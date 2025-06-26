@@ -3,7 +3,7 @@
 import sqlite3
 import json
 
-DB_PATH = "checkpoints/checkpoints_synced.db"  # Pas dit aan indien nodig
+DB_PATH = "checkpoints/checkpoints_chat.db"  # Pas dit aan indien nodig
 
 
 def init_db():
