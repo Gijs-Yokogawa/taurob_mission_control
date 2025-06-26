@@ -56,3 +56,22 @@ def test_save_and_get_checkpoint(tmp_path, monkeypatch):
 def test_get_checkpoint_json_by_id_none(tmp_path, monkeypatch):
     setup_temp_db(tmp_path, monkeypatch)
     assert manager.get_checkpoint_json_by_id("missing") is None
+
+
+def test_get_all_checkpoints_sorted_case_insensitive(tmp_path, monkeypatch):
+    setup_temp_db(tmp_path, monkeypatch)
+    checkpoints = [
+        {"id": "1", "type": "demo", "name": "alpha", "created_at": "2024-01-01"},
+        {"id": "2", "type": "demo", "name": "Bravo", "created_at": "2024-01-01"},
+        {"id": "3", "type": "demo", "name": "charlie", "created_at": "2024-01-01"},
+    ]
+    for cp in checkpoints:
+        manager.save_checkpoint(cp)
+
+    rows = manager.get_all_checkpoints_from_db(order_by="name", ascending=True)
+    names = [r[1] for r in rows]
+    assert names == ["alpha", "Bravo", "charlie"]
+
+    rows_desc = manager.get_all_checkpoints_from_db(order_by="name", ascending=False)
+    names_desc = [r[1] for r in rows_desc]
+    assert names_desc == ["charlie", "Bravo", "alpha"]
