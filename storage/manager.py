@@ -106,6 +106,8 @@ def get_all_checkpoints_from_db(order_by="id", ascending=True):
 
     if order_by == "checkpoint_id":
         order_field = "CAST(checkpoint_id AS INTEGER)"
+    elif order_by in ("name", "type"):
+        order_field = f"{order_by} COLLATE NOCASE"
     else:
         order_field = order_by
 
