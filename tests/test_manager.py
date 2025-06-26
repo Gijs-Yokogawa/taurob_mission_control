@@ -10,7 +10,7 @@ import storage.manager as manager
 
 def setup_temp_db(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
-    monkeypatch.setattr(manager, "DB_PATH", str(db_path))
+    monkeypatch.setenv("DB_PATH", str(db_path))
     manager.init_db()
     return db_path
 

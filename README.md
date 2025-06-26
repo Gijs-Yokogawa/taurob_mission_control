@@ -38,6 +38,18 @@ The test suite uses **pytest**. After installing the dependencies and pytest, ru
 pytest
 ```
 
+## 🗄️ Database Path
+
+By default the SQLite database is stored at `checkpoints/checkpoints_chat.db`.
+Set the `DB_PATH` environment variable or create a `db_config.json` file in the
+project root to override this location:
+
+```json
+{
+  "DB_PATH": "/path/to/your.db"
+}
+```
+
 ## 📂 Project Structure
 
 ```text
