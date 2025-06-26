@@ -1,131 +1,116 @@
-# gui/checkpoint_viewer.py — DB-driven viewer met correcte kolommapping voor 6-koloms tuple
+# gui/checkpoint_viewer.py
 
 import tkinter as tk
 from tkinter import ttk, messagebox
+from api.client import get_checkpoints, delete_checkpoint, sync_from_robot
+from storage.manager import (
+    update_local_checkpoints_from_api,
+    get_all_checkpoints_from_db,
+    get_checkpoint_json_by_id,
+)
 import json
-import requests
-from requests.auth import HTTPBasicAuth
-from storage.manager import load_all_checkpoints, save_checkpoint
-from urllib3.exceptions import InsecureRequestWarning
 
-requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+class CheckpointViewer(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Checkpoints Bekijken")
 
-API_URL_TEMPLATE = "https://10.1.0.1:8443/basic/mission_editor/data_model/editor/action/all?robot_name={}"
+        # Titel
+        title = tk.Label(self, text="Checkpoints", font=("Arial", 16, "bold"))
+        title.pack(pady=(10, 0))
 
+        # Hoofdframe (Tree + editor)
+        main_frame = tk.Frame(self)
+        main_frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
-def launch_checkpoint_viewer(parent, username, password):
-    viewer = tk.Toplevel(parent)
-    viewer.title("Bekijk Checkpoints")
+        # TreeView met kolommen
+        self.tree = ttk.Treeview(main_frame, columns=("checkpoint_id", "name", "type", "created_at"), show="headings")
+        self.tree.heading("checkpoint_id", text="ID", command=lambda: self.sort_tree("checkpoint_id"))
+        self.tree.heading("name", text="Naam", command=lambda: self.sort_tree("name"))
+        self.tree.heading("type", text="Type", command=lambda: self.sort_tree("type"))
+        self.tree.heading("created_at", text="Created At", command=lambda: self.sort_tree("created_at"))
 
-    # Layout
-    frm = ttk.Frame(viewer, padding=10)
-    frm.grid(sticky="nsew")
-    viewer.rowconfigure(1, weight=1)
-    viewer.columnconfigure(0, weight=1)
+        self.tree.column("checkpoint_id", width=120)
+        self.tree.column("name", width=250)
+        self.tree.column("type", width=100)
+        self.tree.column("created_at", width=150)
 
-    # Robotnaam invoer
-    ttk.Label(frm, text="Robot Naam:").grid(row=0, column=0, sticky='w')
-    robot_entry = ttk.Entry(frm)
-    robot_entry.grid(row=0, column=1, sticky='we')
+        self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+        self.tree.pack(fill=tk.BOTH, expand=True)
 
-    # Cache records list
-    records = []
+        # JSON-editor onderin
+        self.json_text = tk.Text(self, height=10, font=("Courier", 10))
+        self.json_text.pack(fill=tk.BOTH, padx=10, pady=(0, 10), expand=False)
 
-    def load_from_db():
-        nonlocal records
-        # now returns tuples: (id, checkpoint_id, type, name, json_str, created_at)
-        records = load_all_checkpoints()
-        tree.delete(*tree.get_children())
-        details_box.delete('1.0', tk.END)
-        for rec in records:
-            internal_id, cp_id, ctype, name, json_str, created = rec
-            tree.insert('', 'end', values=(internal_id, cp_id, ctype, name, created))
+        # Knoppenframe
+        button_frame = tk.Frame(self)
+        button_frame.pack(pady=5)
 
-    def sync_from_api():
-        robot_name = robot_entry.get().strip()
-        if not robot_name:
-            messagebox.showerror("Fout", "Robotnaam is leeg")
-            return
+        tk.Button(button_frame, text="Erase DB & Sync", command=self.erase_and_sync).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Delete & Sync Selected", command=self.delete_and_sync_selected).pack(side=tk.LEFT, padx=5)
+
+        # Variabelen voor sorteren
+        self.sort_column = "id"
+        self.sort_ascending = True
+
+        # Initialiseer met data
+        self.erase_and_sync()
+
+    def erase_and_sync(self):
         try:
-            url = API_URL_TEMPLATE.format(robot_name)
-            resp = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
-            resp.raise_for_status()
-            actions = resp.json()
-            for action in actions:
-                save_checkpoint(action, action.get("ActionID", -1))
-            messagebox.showinfo("Success", f"{len(actions)} checkpoints geïmporteerd.")
-            load_from_db()
-            parent.event_generate('<<CheckpointAdded>>', when='tail')
+            api_data = get_checkpoints()
+            update_local_checkpoints_from_api(api_data)
+            self.populate_tree()
+            messagebox.showinfo("Succes", "Database geleegd en gesynchroniseerd met API.", parent=self)
         except Exception as e:
-            messagebox.showerror("Fout bij API", str(e))
+            messagebox.showerror("Fout", f"Fout bij synchronisatie:\n{e}", parent=self)
 
-    # Sync knop (na definities)
-    sync_btn = ttk.Button(frm, text="Sync van Robot API", command=sync_from_api)
-    sync_btn.grid(row=0, column=2, padx=5)
+    def populate_tree(self):
+        self.tree.delete(*self.tree.get_children())
+        rows = get_all_checkpoints_from_db(order_by=self.sort_column, ascending=self.sort_ascending)
+        for checkpoint_id, name, ctype, created_at in rows:
+            self.tree.insert("", "end", values=(checkpoint_id, name, ctype, created_at))
+        self.json_text.delete("1.0", tk.END)
 
-    # Treeview voor checkpoint-overzicht
-    columns = ("internal_id", "checkpoint_id", "type", "name", "created_at")
-    tree = ttk.Treeview(
-        frm,
-        columns=columns,
-        show='headings',
-        displaycolumns=("checkpoint_id", "type", "name", "created_at")
-    )
-    headings = {
-        "checkpoint_id": "CheckpointID",
-        "type": "Type",
-        "name": "Naam",
-        "created_at": "Aangemaakt"
-    }
-    def convert(val):
-        try:
-            return (0, int(val))
-        except (ValueError, TypeError):
-            return (1, str(val).lower())
+    def sort_tree(self, col):
+        if self.sort_column == col:
+            self.sort_ascending = not self.sort_ascending
+        else:
+            self.sort_column = col
+            self.sort_ascending = True
+        self.populate_tree()
 
-    def sort_treeview(treeview, col, reverse):
-        data = [(convert(treeview.set(item, col)), item) for item in treeview.get_children('')]
-        data.sort(reverse=reverse)
-        for idx, (_, item) in enumerate(data):
-            treeview.move(item, '', idx)
-        treeview.heading(col, command=lambda: sort_treeview(treeview, col, not reverse))
-
-    for col in columns:
-        tree.heading(col, text=headings.get(col, col), command=lambda c=col: sort_treeview(tree, c, False))
-        tree.column(col, anchor='w')
-    tree.grid(row=1, column=0, columnspan=3, sticky="nsew")
-
-    # Scrollbar
-    scrollbar = ttk.Scrollbar(frm, orient="vertical", command=tree.yview)
-    scrollbar.grid(row=1, column=3, sticky="ns")
-    tree.configure(yscroll=scrollbar.set)
-
-    # Details text box
-    details_box = tk.Text(frm, height=15, width=80)
-    details_box.grid(row=2, column=0, columnspan=4, pady=10)
-
-    def on_select(event):
-        sel = tree.selection()
-        if not sel:
+    def delete_and_sync_selected(self):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Geen selectie", "Selecteer een checkpoint om te verwijderen.", parent=self)
             return
-        item = sel[0]
-        internal = int(tree.set(item, 'internal_id'))
-        details_box.delete('1.0', tk.END)
-        for rec in records:
-            if rec[0] == internal:
-                json_str = rec[4]
-                try:
-                    data = json.loads(json_str)
-                    details_box.insert(tk.END, json.dumps(data, indent=2))
-                except json.JSONDecodeError:
-                    details_box.insert(tk.END, json_str)
-                break
 
-    # Bind events
-    tree.bind('<<TreeviewSelect>>', on_select)
-    parent.bind('<<CheckpointAdded>>', lambda e: load_from_db())
+        checkpoint_id = self.tree.item(selected_item[0], "values")[0]
+        naam = self.tree.item(selected_item[0], "values")[1]
 
-    # Eerste load
-    load_from_db()
+        confirm = messagebox.askyesno("Bevestig verwijdering", f"Weet je zeker dat je '{naam}' wil verwijderen?", parent=self)
+        if not confirm:
+            return
 
-    return viewer
+        try:
+            success = delete_checkpoint(checkpoint_id)
+            if success:
+                self.erase_and_sync()
+                messagebox.showinfo("Verwijderd", f"Checkpoint '{naam}' verwijderd en database gesynchroniseerd.", parent=self)
+            else:
+                messagebox.showwarning("Mislukt", "Verwijderen mislukt.", parent=self)
+        except Exception as e:
+            messagebox.showerror("Fout bij verwijderen", str(e), parent=self)
+
+    def on_tree_select(self, event):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            return
+        checkpoint_id = self.tree.item(selected_item[0], "values")[0]
+        json_data = get_checkpoint_json_by_id(checkpoint_id)
+
+        self.json_text.delete("1.0", tk.END)
+        if json_data:
+            pretty_json = json.dumps(json_data, indent=2)
+            self.json_text.insert(tk.END, pretty_json)

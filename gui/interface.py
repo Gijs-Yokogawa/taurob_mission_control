@@ -1,20 +1,34 @@
-# gui/interface.py — Updated: removed Start Checkpoint GUI
+# gui/interface.py
 
 import tkinter as tk
-from tkinter import ttk
-from gui.template_gui import launch_template_generator
-from gui.checkpoint_viewer import launch_checkpoint_viewer
+from gui.template_gui import TemplateGenerator
+from gui.checkpoint_viewer import CheckpointViewer
 
-def show_main_menu(session_token, username, password):
-    root = tk.Tk()
-    root.title("Taurob Mission Control")
+def show_main_menu(root=None):
+    # Sluit het loginvenster netjes als het meegegeven is
+    if root:
+        root.destroy()
 
-    frm = ttk.Frame(root, padding=20)
-    frm.grid()
+    main_root = tk.Tk()
+    main_root.title("Taurob Mission Control")
 
-    ttk.Label(frm, text="Welkom bij Taurob Mission Control").grid(column=0, row=0, columnspan=2, pady=10)
+    frame = tk.Frame(main_root, padx=20, pady=20)
+    frame.pack()
 
-    ttk.Button(frm, text="Genereer Leeg Template", command=lambda: launch_template_generator()).grid(column=0, row=1, pady=5)
-    ttk.Button(frm, text="Bekijk Checkpoints", command=lambda: launch_checkpoint_viewer(root, username, password)).grid(column=0, row=2, pady=5)
+    tk.Label(frame, text="Taurob Mission Control", font=("Arial", 20, "bold")).pack(pady=(0, 20))
 
-    root.mainloop()
+    tk.Button(
+        frame,
+        text="Template Generator",
+        width=25,
+        command=lambda: TemplateGenerator(main_root)
+    ).pack(pady=5)
+
+    tk.Button(
+        frame,
+        text="Checkpoint Viewer",
+        width=25,
+        command=lambda: CheckpointViewer(main_root)
+    ).pack(pady=5)
+
+    main_root.mainloop()
